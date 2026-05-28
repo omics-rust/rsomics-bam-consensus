@@ -12,6 +12,11 @@ description = "FASTA/FASTQ/pileup consensus from a sorted BAM — Rust port of s
 name = "rsomics-bam-consensus"
 path = "src/main.rs"
 
+
+[lib]
+name = "rsomics_bam_consensus"
+path = "src/lib.rs"
+doctest = false
 [dependencies]
 rsomics-common = { version = "0.6" }
 rsomics-bamio = { version = "0.1" }
