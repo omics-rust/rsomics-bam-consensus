@@ -4,16 +4,11 @@ use crate::lookup::{
     CIGAR_DEL, CIGAR_DIFF, CIGAR_EQUAL, CIGAR_INS, CIGAR_MATCH, CIGAR_REF_SKIP, CIGAR_SOFT_CLIP,
 };
 
-/// Sentinel slot values for deletions and ref-skips.
 pub(crate) const SLOT_DEL: (u8, u8) = (16, 0);
 pub(crate) const SLOT_SKIP: (u8, u8) = (17, 0);
 
-/// One active read in the pileup buffer.
-///
-/// CIGAR is flattened into `slots` indexed by reference offset from `beg`:
-/// each slot is `(base4, qual)`. O(1) column lookup with no per-column allocation.
-///
-/// `base4` values: 0–15 = seq_nt16; 16 = deletion; 17 = ref-skip.
+/// CIGAR flattened into `slots[ref_pos - beg]`: `(base4, qual)`.
+/// `base4`: 0–15 = seq_nt16, 16 = deletion, 17 = ref-skip.
 pub(crate) struct ActiveRead {
     /// Reference start (inclusive, 0-based).
     pub(crate) beg: i64,
@@ -26,7 +21,6 @@ pub(crate) struct ActiveRead {
 }
 
 impl ActiveRead {
-    /// Build from a raw record; `slots` is a recycled Vec from the pool.
     pub(crate) fn new(rec: RawRecord, mut slots: Vec<(u8, u8)>) -> Self {
         let beg = i64::from(rec.alignment_start());
         let tid = rec.reference_sequence_id();
@@ -82,14 +76,12 @@ impl ActiveRead {
         }
     }
 
-    /// Return the slot Vec to the pool.
     pub(crate) fn retire(self, pool: &mut Vec<Vec<(u8, u8)>>) {
         if pool.len() < 128 {
             pool.push(self.slots);
         }
     }
 
-    /// O(1) lookup: `(base4, qual, is_del, is_refskip)` at reference `pos`.
     #[inline]
     pub(crate) fn at(&self, pos: i64) -> (u8, u8, bool, bool) {
         let off = (pos - self.beg) as usize;
